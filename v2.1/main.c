@@ -1,7 +1,7 @@
 /*
  BY: Prangon Das
  Date: 4/19/19
- 10 sec fading LED and then flash for 2 seconds
+10 sec fading LED and then flash for 2 seconds!
  */
 
 #include <bcm2835.h>
