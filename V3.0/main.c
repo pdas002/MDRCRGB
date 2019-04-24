@@ -265,83 +265,40 @@ int main(void)
     err = Pa_CloseStream( stream );
     if( err != paNoError ) goto done;
 
-    /* Measure maximum peak amplitude. */
-    max = 0;
-    average = 0.0;
+	/*Prints average amplitudes of each second*/
+	int averageCount = 0;
+	int interTotal = 0;
+	int interAverage;
+	int start = 0;
+	int PWMdata;
     for( i=0; i<numSamples; i++ )
     {
-        val = data.recordedSamples[i];
-        if( val < 0 ) val = -val; /* ABS */
-        if( val > max )
-        {
-            max = val;
-        }
-        average += val;
+		if(averageCount == 47999){
+			if(start != 0){
+				printf("%d",interTotal);
+				printf(" %d ", averageCount);
+				interAverage = interTotal/averageCount;
+				if(average < 1024){
+					//Send to PWM
+					printf("sample average = %d\n", interAverage);
+				}else{
+					//PWM gets 1024
+					printf("sample average = %d\n", 1024);
+				}
+			}else{
+				start = 1; 
+			}
+			interTotal = 0;
+			averageCount = 0;
+		}
+		val = data.recordedSamples[i];
+		if( val < 0 ) 
+			val = -val; /* ABS */
+		interAverage += val;
+		averageCount++;
+		
     }
 
-    average = average / (double)numSamples;
-
-    printf("sample max amplitude = "PRINTF_S_FORMAT"\n", max );
-    printf("sample average = %lf\n", average );
-
-    /* Write recorded data to a file. */
-#if WRITE_TO_FILE
-    {
-        FILE  *fid;
-        fid = fopen("recorded.raw", "wb");
-        if( fid == NULL )
-        {
-            printf("Could not open file.");
-        }
-        else
-        {
-            fwrite( data.recordedSamples, NUM_CHANNELS * sizeof(SAMPLE), totalFrames, fid );
-            fclose( fid );
-            printf("Wrote data to 'recorded.raw'\n");
-        }
-    }
-#endif
-
-    /* Playback recorded data.  -------------------------------------------- */
-    data.frameIndex = 0;
-
-    outputParameters.device = Pa_GetDefaultOutputDevice(); /* default output device */
-    if (outputParameters.device == paNoDevice) {
-        fprintf(stderr,"Error: No default output device.\n");
-        goto done;
-    }
-    outputParameters.channelCount = 1;                     /* stereo output */
-    outputParameters.sampleFormat =  PA_SAMPLE_TYPE;
-    outputParameters.suggestedLatency = Pa_GetDeviceInfo( outputParameters.device )->defaultLowOutputLatency;
-    outputParameters.hostApiSpecificStreamInfo = NULL;
-
-    printf("\n=== Now playing back. ===\n"); fflush(stdout);
-    err = Pa_OpenStream(
-              &stream,
-              NULL, /* no input */
-              &outputParameters,
-              SAMPLE_RATE,
-              FRAMES_PER_BUFFER,
-              paClipOff,      /* we won't output out of range samples so don't bother clipping them */
-              playCallback,
-              &data );
-    if( err != paNoError ) goto done;
-
-    if( stream )
-    {
-        err = Pa_StartStream( stream );
-        if( err != paNoError ) goto done;
-        
-        printf("Waiting for playback to finish.\n"); fflush(stdout);
-
-        while( ( err = Pa_IsStreamActive( stream ) ) == 1 ) Pa_Sleep(100);
-        if( err < 0 ) goto done;
-        
-        err = Pa_CloseStream( stream );
-        if( err != paNoError ) goto done;
-        
-        printf("Done.\n"); fflush(stdout);
-    }
 
 done:
     Pa_Terminate();
